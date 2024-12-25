@@ -10,8 +10,8 @@ struct Person;
 struct Name(String);
 
 fn add_people(mut commands: Commands) {
-    commands.spawn((Person, Name("Philippe LE".to_string())));
-    commands.spawn((Person, Name("Zumradh SEVOUSA MARECAR".to_string())));
+    commands.spawn((Person, Name("Carl Saggan".to_string())));
+    commands.spawn((Person, Name("Alain Fill".to_string())));
 }
 
 fn print_persons(query: Query<&Name, With<Person>>) {
@@ -21,11 +21,9 @@ fn print_persons(query: Query<&Name, With<Person>>) {
 }
 
 fn update_people(mut query: Query<&mut Name, With<Person>>) {
-    let name = query
-        .iter_mut()
-        .find(|name| name.0 == "Zumradh SEVOUSA MARECAR");
+    let name = query.iter_mut().find(|name| name.0 == "Alain Fill");
     if name.is_some() {
-        name.unwrap().0 = "Zumradh LE".to_string();
+        name.unwrap().0 = "Alain Sugar".to_string();
     }
 }
 
