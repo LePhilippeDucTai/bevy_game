@@ -1,16 +1,4 @@
-use bevy::{ecs::query, prelude::*};
-#[derive(Component)]
-struct Position {
-    x: f32,
-    y: f32,
-}
-
-fn print_position(query: Query<&Position>) {
-    (&query)
-        .iter()
-        .for_each(|position| println!("Position : {} {}", position.x, position.y));
-}
-
+use bevy::prelude::*;
 fn hello_world() {
     println!("hello world!");
 }
@@ -27,30 +15,35 @@ fn add_people(mut commands: Commands) {
 }
 
 fn print_persons(query: Query<&Name, With<Person>>) {
-    (&query)
+    query
         .iter()
         .for_each(|name| println!("Person : {}", name.0));
 }
 
 fn update_people(mut query: Query<&mut Name, With<Person>>) {
-    for mut name in &mut query {
-        if name.0 == "Zumradh SEVOUSA MARECAR" {
-            name.0 = "Zumradh LE".to_string();
-            break; // We don't need to change any other names.
-        }
+    let name = query
+        .iter_mut()
+        .find(|name| name.0 == "Zumradh SEVOUSA MARECAR");
+    if name.is_some() {
+        name.unwrap().0 = "Zumradh LE".to_string();
     }
-    (&mut query)
-        .iter()
-        .filter(|name| name.0 == "Zumradh SEVOUSA MARECAR")
-        .for_each(|&mut name| name.0 = "Zumradh LE".to_string());
+}
+
+pub struct HelloPlugin;
+
+impl Plugin for HelloPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, add_people);
+        app.add_systems(
+            Update,
+            (hello_world, (update_people, print_persons).chain()),
+        );
+    }
 }
 
 fn main() {
     App::new()
-        .add_systems(Startup, add_people)
-        .add_systems(
-            Update,
-            (hello_world, (update_people, print_persons).chain()),
-        )
+        .add_plugins(DefaultPlugins)
+        .add_plugins(HelloPlugin)
         .run();
 }
