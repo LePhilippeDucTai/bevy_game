@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use rand::Rng;
 
 #[derive(Component)]
 struct Moving {
@@ -15,7 +14,7 @@ struct Enemy;
 
 impl Moving {
     fn new() -> Moving {
-        let velocity = Vec2::new(42.0, 0.0);
+        let velocity = Vec2::new(10.0, 0.0);
         let acceleration = Vec2::new(0.0, 0.0);
         Moving {
             velocity,
@@ -24,34 +23,18 @@ impl Moving {
     }
 }
 
-fn initialize_element(
-    asset_server: &Res<AssetServer>,
-    path: &str,
-    randomly: bool,
-) -> (Sprite, Transform) {
-    let sprite_player = Sprite::from_image(asset_server.load(path));
-    let movable = if randomly {
-        let mut rng = rand::thread_rng();
-        let (x, y, z): (f32, f32, f32) = (rng.gen(), rng.gen(), rng.gen());
-        Transform::from_xyz(100.0 * x, 100.0 * y, 100.0 * z)
-    } else {
-        Transform::from_xyz(0.0, 0.0, 0.0)
-    };
-    (sprite_player, movable)
-}
 fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     let path = "sprites/ball_blue_small.png";
-    let moving = Moving::new();
-    let (sprite_player, transform) = initialize_element(&asset_server, path, false);
-    commands.spawn((Player, moving, transform, sprite_player));
+    let sprite_player = Sprite::from_image(asset_server.load(path));
+    commands.spawn((Player, sprite_player));
 }
 
 fn spawn_enemies(mut commands: Commands, asset_server: Res<AssetServer>) {
     let path = "sprites/ball_red_small.png";
     for _ in 0..10 {
         let moving = Moving::new();
-        let (sprite_player, transform) = initialize_element(&asset_server, path, true);
-        commands.spawn((Enemy, moving, transform, sprite_player));
+        let sprite = Sprite::from_image(asset_server.load(path));
+        commands.spawn((Enemy, moving, sprite));
     }
 }
 fn spawn_camera(mut commands: Commands) {
