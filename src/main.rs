@@ -1,13 +1,14 @@
 use bevy::prelude::*;
 use bevy_game::utils::random::uniform;
 use std::time::Duration;
-const PLAYER_SPEED: f32 = 40.0;
+const PLAYER_SPEED: f32 = 200.0;
+const ENEMY_SPEED: f32 = 200.0;
+const N_ENEMIES: usize = 3;
+#[derive(Component)]
+struct Velocity(Vec3);
 
 #[derive(Component)]
-struct Moving {
-    velocity: Vec3,
-    acceleration: Vec3,
-}
+struct Acceleration(Vec3);
 
 #[derive(Component)]
 struct Player;
@@ -18,14 +19,10 @@ struct Enemy;
 #[derive(Resource)]
 struct ObjectsTimer(Timer);
 
-impl Moving {
-    fn random() -> Moving {
-        let velocity = uniform(40.0);
-        let acceleration = Vec3::ZERO;
-        Moving {
-            velocity,
-            acceleration,
-        }
+impl Velocity {
+    fn random(scale: f32) -> Velocity {
+        let velocity = uniform(scale);
+        Velocity(velocity)
     }
 }
 
@@ -37,11 +34,11 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn spawn_enemies(mut commands: Commands, asset_server: Res<AssetServer>) {
     let path = "sprites/ball_red_small.png";
-    // let window = window_query.get_single().unwrap();
-    for _ in 0..10 {
-        let moving = Moving::random();
+    for _ in 0..N_ENEMIES {
+        let velocity = Velocity::random(ENEMY_SPEED);
+        let acceleration = Acceleration(Vec3::new(0.0, 0.0, 0.0));
         let sprite = Sprite::from_image(asset_server.load(path));
-        commands.spawn((Enemy, moving, sprite));
+        commands.spawn((Enemy, velocity, acceleration, sprite));
     }
 }
 fn spawn_camera(mut commands: Commands) {
@@ -50,7 +47,7 @@ fn spawn_camera(mut commands: Commands) {
 }
 
 fn update_enemy_position(
-    mut query: Query<(&mut Transform, &mut Moving), With<Enemy>>,
+    mut query: Query<(&mut Transform, &mut Velocity, &Acceleration), With<Enemy>>,
     time: Res<Time>,
     mut res_timer: ResMut<ObjectsTimer>,
 ) {
@@ -60,12 +57,23 @@ fn update_enemy_position(
     if timer.tick(delta).just_finished() {
         query
             .iter_mut()
-            .for_each(|(mut transformation, mut player)| {
-                let acceleration = player.acceleration;
-                player.velocity += acceleration * dt;
-                transformation.translation += player.velocity * dt;
+            .for_each(|(mut transformation, mut velocity, accel)| {
+                velocity.0 += accel.0 * dt;
+                transformation.translation += velocity.0 * dt;
             });
     }
+}
+
+fn attract_enemies_to_player(
+    player_query: Query<&Transform, With<Player>>,
+    mut enemies_query: Query<(&Transform, &mut Acceleration), With<Enemy>>,
+) {
+    let player = player_query.get_single().unwrap();
+    let position = player.translation;
+    enemies_query.iter_mut().for_each(|(transf, mut accel)| {
+        let self_position = transf.translation;
+        accel.0 = position - self_position;
+    });
 }
 
 fn control_player(
@@ -97,8 +105,6 @@ fn control_player(
             direction = direction.normalize();
         }
         transform.translation += direction * PLAYER_SPEED * dt;
-        let test = transform.translation;
-        println!("{test:?}");
     }
 }
 
@@ -113,5 +119,6 @@ fn main() {
             TimerMode::Repeating,
         )))
         .add_systems(Update, (control_player, update_enemy_position))
+        .add_systems(Update, attract_enemies_to_player)
         .run();
 }
