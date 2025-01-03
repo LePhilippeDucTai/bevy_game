@@ -27,17 +27,17 @@ impl Velocity {
 }
 
 fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let path = "sprites/ball_blue_small.png";
+    let path = "sprites/space_shooter/Ships/spaceShips_009.png";
     let sprite_player = Sprite::from_image(asset_server.load(path));
     commands.spawn((Player, sprite_player));
 }
 
 fn spawn_enemies(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let path = "sprites/ball_red_small.png";
+    let path = "sprites/space_shooter/Meteors/spaceMeteors_001.png";
     for _ in 0..N_ENEMIES {
         let velocity = Velocity::random(ENEMY_SPEED);
         let acceleration = Acceleration(Vec3::new(0.0, 0.0, 0.0));
-        let sprite = Sprite::from_image(asset_server.load(path));
+        let sprite: Sprite = Sprite::from_image(asset_server.load(path));
         commands.spawn((Enemy, velocity, acceleration, sprite));
     }
 }
