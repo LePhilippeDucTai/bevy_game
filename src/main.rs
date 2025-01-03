@@ -1,9 +1,14 @@
-use bevy::prelude::*;
-use bevy_game::utils::random::uniform;
+use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_game::utils::random::{random_choice, uniform};
 use std::time::Duration;
 const PLAYER_SPEED: f32 = 200.0;
 const ENEMY_SPEED: f32 = 200.0;
 const N_ENEMIES: usize = 3;
+
+/// Used to help identify our main camera
+#[derive(Component)]
+struct MainCamera;
+
 #[derive(Component)]
 struct Velocity(Vec3);
 
@@ -21,7 +26,7 @@ struct ObjectsTimer(Timer);
 
 impl Velocity {
     fn random(scale: f32) -> Velocity {
-        let velocity = uniform(scale);
+        let velocity = uniform(-1., 1., scale);
         Velocity(velocity)
     }
 }
@@ -29,21 +34,28 @@ impl Velocity {
 fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     let path = "sprites/space_shooter/Ships/spaceShips_009.png";
     let sprite_player = Sprite::from_image(asset_server.load(path));
-    commands.spawn((Player, sprite_player));
+    let transform = Transform::from_scale(Vec3::splat(0.5));
+    commands.spawn((Player, sprite_player, transform));
 }
 
 fn spawn_enemies(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let path = "sprites/space_shooter/Meteors/spaceMeteors_001.png";
+    let path001 = "sprites/space_shooter/Meteors/spaceMeteors_001.png".to_string();
+    let path002 = "sprites/space_shooter/Meteors/spaceMeteors_002.png".to_string();
+    let path003 = "sprites/space_shooter/Meteors/spaceMeteors_003.png".to_string();
+    let path004 = "sprites/space_shooter/Meteors/spaceMeteors_004.png".to_string();
+    let paths = vec![path001, path002, path003, path004];
     for _ in 0..N_ENEMIES {
         let velocity = Velocity::random(ENEMY_SPEED);
         let acceleration = Acceleration(Vec3::new(0.0, 0.0, 0.0));
+        let path = random_choice(&paths);
         let sprite: Sprite = Sprite::from_image(asset_server.load(path));
-        commands.spawn((Enemy, velocity, acceleration, sprite));
+        let transform = Transform::from_scale(Vec3::splat(0.3));
+        commands.spawn((Enemy, velocity, acceleration, sprite, transform));
     }
 }
 fn spawn_camera(mut commands: Commands) {
     let camera = Camera2d::default();
-    commands.spawn(camera);
+    commands.spawn((camera, MainCamera));
 }
 
 fn update_enemy_position(
@@ -108,6 +120,30 @@ fn control_player(
     }
 }
 
+fn mouse_aiming(
+    mut query: Query<&mut Transform, With<Player>>,
+    q_windows: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
+) {
+    let (camera, camera_transform) = q_camera.single();
+
+    if let Some(position) = q_windows
+        .single()
+        .cursor_position()
+        .and_then(|cursor| Some(camera.viewport_to_world(camera_transform, cursor)))
+        .map(|ray| ray.unwrap().origin.truncate())
+    {
+        let mut transform = query.get_single_mut().unwrap();
+        let player_position = transform.translation;
+        let dir = Vec3::new(position.x, position.y, 0.0) - player_position;
+        let angle = dir.y.atan2(dir.x);
+        let sprite_offset = -std::f32::consts::FRAC_PI_2;
+        transform.rotation = Quat::from_rotation_z(angle - sprite_offset);
+    } else {
+        println!("Cursor is not in the game window.");
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -120,5 +156,6 @@ fn main() {
         )))
         .add_systems(Update, (control_player, update_enemy_position))
         .add_systems(Update, attract_enemies_to_player)
+        .add_systems(Update, mouse_aiming)
         .run();
 }
